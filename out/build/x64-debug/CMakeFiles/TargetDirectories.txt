@@ -1,0 +1,3 @@
+C:/ALPHA/SDL/SDL_Game/out/build/x64-debug/CMakeFiles/SDL_Game.dir
+C:/ALPHA/SDL/SDL_Game/out/build/x64-debug/CMakeFiles/edit_cache.dir
+C:/ALPHA/SDL/SDL_Game/out/build/x64-debug/CMakeFiles/rebuild_cache.dir
