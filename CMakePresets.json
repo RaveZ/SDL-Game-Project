@@ -10,7 +10,7 @@
             "strategy": "external"
           },
           "cacheVariables": {
-            "CMAKE_PREFIX_PATH": "C:\\ALPHA\\SDL\\SDL3-3.4.14"
+            "CMAKE_PREFIX_PATH": "C:\\ALPHA\\SDL\\SDKs\\SDL3-3.4.14;C:\\ALPHA\\SDL\\SDKs\\SDL3_image-3.4.6"
           }
         },
         {
