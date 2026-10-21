@@ -74,11 +74,17 @@ struct Resources
     const int ANIM_BULLET_HIT = 1;
 	std::vector<Animation> bulletAnims;
 
+    std::vector<Animation> enemyAnims;
+	const int ANIM_ENEMY = 0;
+    const int ANIM_ENEMY_HIT = 1;
+    const int ANIM_ENEMY_DIE = 2;
+
 	std::vector<SDL_Texture*> textures;
     SDL_Texture *texIdle, *texRun, * texSlide,
         *texBrick, *texGrass, *texGround, *texPanel, 
         *texBg1, *texBg2, *texBg3, *texBg4, *texBullet, *texBulletHit,
-        *texShoot, *texRunShoot, *texSlideShoot;
+        *texShoot, *texRunShoot, *texSlideShoot,
+        *texEnemy, *texEnemyHit, *texEnemyDie;
 
     SDL_Texture* loadTexture(SDL_Renderer* renderer, const std::string& filePath)
     {
@@ -99,6 +105,11 @@ struct Resources
 		bulletAnims[ANIM_BULLET_MOVING] = Animation(4, 0.05f);
 		bulletAnims[ANIM_BULLET_HIT] = Animation(4, 0.15f);
 
+		enemyAnims.resize(3);
+		enemyAnims[ANIM_ENEMY] = Animation(8, 1.0f);
+		enemyAnims[ANIM_ENEMY_HIT] = Animation(8, 1.f);
+		enemyAnims[ANIM_ENEMY_DIE] = Animation(18, 2.0f);
+
 		texIdle = loadTexture(state.renderer, "data/idle.png");
 		texRun = loadTexture(state.renderer, "data/run.png");
 		texSlide = loadTexture(state.renderer, "data/slide.png");
@@ -115,6 +126,9 @@ struct Resources
 		texShoot = loadTexture(state.renderer, "data/shoot.png");
         texRunShoot = loadTexture(state.renderer, "data/shoot_run.png");
 		texSlideShoot = loadTexture(state.renderer, "data/slide_shoot.png");
+		texEnemy = loadTexture(state.renderer, "data/enemy.png");
+		texEnemyHit = loadTexture(state.renderer, "data/enemy_hit.png");
+		texEnemyDie = loadTexture(state.renderer, "data/enemy_die.png");
     }
 
     void unload()
@@ -206,10 +220,7 @@ int main(int argc, char* argv[])
             for (auto& obj : layer)
             {
 				update(state, gs, res, obj, deltaTime); 
-                if (obj.currentAnimation != -1)
-                {
-					obj.animations[obj.currentAnimation].step(deltaTime);
-                }
+               
             }
         }
 
@@ -218,11 +229,6 @@ int main(int argc, char* argv[])
         {
             update(state, gs, res, bullet, deltaTime);
 
-            //update the animation
-            if (bullet.currentAnimation != -1)
-            {
-                bullet.animations[bullet.currentAnimation].step(deltaTime);
-            }
         }
 
         //calculate viewport position
@@ -343,7 +349,7 @@ void cleanup(SDLState &state)
 void drawObject(const SDLState& state, GameState& gs, GameObject& obj, float width, float height, float deltaTime)
 {
     float srcX = obj.currentAnimation != -1
-        ? obj.animations[obj.currentAnimation].currentFrame() * width : 0.0f;
+        ? obj.animations[obj.currentAnimation].currentFrame() * width : (obj.spriteFrame - 1) * width;
 
     SDL_FRect src{
         .x = srcX,
@@ -362,7 +368,22 @@ void drawObject(const SDLState& state, GameState& gs, GameObject& obj, float wid
     SDL_FlipMode flipMode = obj.direction == -1 ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
 
 
-    SDL_RenderTextureRotated(state.renderer, obj.texture, &src, &dst, 0.f, nullptr, flipMode);
+    if (!obj.shouldFlash)
+    {
+        SDL_RenderTextureRotated(state.renderer, obj.texture, &src, &dst, 0.f, nullptr, flipMode);
+    }
+    else
+    {
+        //flash object with redish tint
+        SDL_SetTextureColorModFloat(obj.texture, 2.5f, 1.0f, 1.0f);
+		SDL_RenderTextureRotated(state.renderer, obj.texture, &src, &dst, 0.f, nullptr, flipMode);
+        SDL_SetTextureColorModFloat(obj.texture, 1.0f, 1.0f, 1.0f);
+
+        if(obj.flashTimer.step(deltaTime))
+        {
+            obj.shouldFlash = false;
+		}
+    }
 
     if (gs.debugMode)
     {
@@ -382,6 +403,12 @@ void drawObject(const SDLState& state, GameState& gs, GameObject& obj, float wid
 
 void update(const SDLState& state, GameState& gs, Resources& res, GameObject& obj, float deltaTime)
 {
+    //update the animation
+    if (obj.currentAnimation != -1)
+    {
+        obj.animations[obj.currentAnimation].step(deltaTime);
+    }
+
     if(obj.dynamic && !obj.grounded)
     {
         //apply some gravity
@@ -552,7 +579,50 @@ void update(const SDLState& state, GameState& gs, Resources& res, GameObject& ob
 
         
 	}
+    else if (obj.type == ObjectType::enemy)
+    {
+        switch (obj.data.enemy.state)
+        {
+            case EnemyState::shambling:
+            {
+                glm::vec2 playerDir = gs.player().position - obj.position;
+                if (glm::length(playerDir) < 100.f)
+                {
+                    currentDirection = playerDir.x < 0 ? -1 : 1;
+					obj.acceleration = glm::vec2(30, 0);
 
+                }
+                else
+                {
+					obj.acceleration = glm::vec2(0);
+					obj.velocity.x = 0; 
+                }
+                break;
+            }
+            case EnemyState::damaged:
+            {
+                if(obj.data.enemy.damagedTimer.step(deltaTime))
+                {
+                    obj.data.enemy.state = EnemyState::shambling;
+                    obj.texture = res.texEnemy;
+                    obj.currentAnimation = res.ANIM_ENEMY;
+				}
+                break;
+            }
+            case EnemyState::dead:
+            {
+                obj.velocity.x = 0;
+                if (obj.currentAnimation != -1 && 
+                    obj.animations[obj.currentAnimation].isDone())
+                {
+                    //remove animation and set to last frame
+					obj.currentAnimation = -1;
+					obj.spriteFrame = 18;
+                }
+                break;
+            }
+        }
+    }
 
     if (currentDirection)
     {
@@ -665,22 +735,72 @@ void collisionResponse(const SDLState& state, GameState& gs, Resources& res,
 				genericResponse();
                 break;
             }
+            case ObjectType::enemy:
+            {
+                if(objB.data.enemy.state != EnemyState::dead)
+                {
+                    objA.velocity = glm::vec2(100, 0) * -objA.direction;
+				}
+            }
         }
     }
     else if(objA.type == ObjectType::bullet)
     {
+		bool passThrough = false;
         switch (objA.data.bullet.state)
         {
             case BulletState::moving:
             {
-                genericResponse();
-                objA.velocity *= 0;
-                objA.data.bullet.state = BulletState::colliding;
-				objA.texture = res.texBulletHit;
-				objA.currentAnimation = res.ANIM_BULLET_HIT;
+                switch (objB.type)
+                {
+                    case ObjectType::level:
+                    {
+                        break;
+                    }
+                    case ObjectType::enemy:
+                    {
+                        EnemyData& d = objB.data.enemy;
+                        if(d.state != EnemyState::dead)
+                        {
+                            objB.direction = -objA.direction;
+                            objB.shouldFlash = true;
+                            objB.flashTimer.reset();
+                            objB.texture = res.texEnemyHit;
+                            d.state = EnemyState::damaged;
+
+                            //damage the enemy and flag death if health is 0
+                            d.healthPoints -= 10;
+                            if (d.healthPoints <= 0)
+                            {
+                                d.state = EnemyState::dead;
+                                objB.texture = res.texEnemyDie;
+                                objB.currentAnimation = res.ANIM_ENEMY_DIE;
+                            }
+						}
+                        else
+                        {
+                            //dont collide with dead enemies
+                            passThrough = true;
+						}
+                       
+                        break;
+                    }
+                }
+                if (!passThrough)
+                {
+                    genericResponse();
+                    objA.velocity *= 0;
+                    objA.data.bullet.state = BulletState::colliding;
+                    objA.texture = res.texBulletHit;
+                    objA.currentAnimation = res.ANIM_BULLET_HIT;
+                }
                 break;
             }
         }
+	}
+    else if(objA.type == ObjectType::enemy)
+    {
+        genericResponse();
 	}
 
 }
@@ -726,8 +846,8 @@ void createTiles(const SDLState& state, GameState& gs, const Resources& res)
     short map[MAP_ROWS][MAP_COLS] = {
         0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 4, 0, 2, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 3, 2, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 4, 2, 0, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 
     };
@@ -784,6 +904,21 @@ void createTiles(const SDLState& state, GameState& gs, const Resources& res)
                         gs.layers[LAYER_IDX_LEVEL].push_back(o);
                         break;
                     }
+                    case 3: //enemy
+                    {
+                        GameObject o = createObject(r, c, res.texEnemy, ObjectType::enemy);
+						o.data.enemy = EnemyData();
+						o.currentAnimation = res.ANIM_ENEMY;
+						o.animations = res.enemyAnims;
+                        o.collider = {
+                            .x = 10, .y = 4,
+                            .w = 12, .h = 28
+                        };
+                        o.maxSpeedX = 15;
+						o.dynamic = true;
+						gs.layers[LAYER_IDX_CHARACTERS].push_back(o);
+                        break;
+					}
                     case 4: //player
                     {
                         //create our player
