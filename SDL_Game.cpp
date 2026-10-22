@@ -2,6 +2,7 @@
 #include <SDL3/SDL_main.h>
 #include "animation.h"
 #include <SDL3_image/SDL_image.h>
+#include <SDL3_mixer/SDL_mixer.h>
 #include <glm/glm.hpp>
 #include <vector>
 #include <string>
@@ -23,11 +24,15 @@ struct SDLState
 {
 	SDL_Window* window;
     SDL_Renderer* renderer;
+    MIX_Mixer* mixer;
     int width, height, logW, logH;
     const bool* keys;
+    bool fullscreen;
+
     
     SDLState() : keys(SDL_GetKeyboardState(nullptr))
     {
+        fullscreen = false;
 	}
 };
 
@@ -63,6 +68,7 @@ struct GameState
 
 struct Resources
 {
+    //animations
     const int ANIM_PLAYER_IDLE = 0;
     const int ANIM_PLAYER_RUN = 1;
     const int ANIM_PLAYER_SLIDE = 2;
@@ -79,6 +85,7 @@ struct Resources
     const int ANIM_ENEMY_HIT = 1;
     const int ANIM_ENEMY_DIE = 2;
 
+    //textures
 	std::vector<SDL_Texture*> textures;
     SDL_Texture *texIdle, *texRun, * texSlide,
         *texBrick, *texGrass, *texGround, *texPanel, 
@@ -86,14 +93,31 @@ struct Resources
         *texShoot, *texRunShoot, *texSlideShoot,
         *texEnemy, *texEnemyHit, *texEnemyDie;
 
+    //Sound
+    std::vector<MIX_Audio*> audioList;
+    MIX_Audio *audioShoot, *audioShootHit, *audioEnemyHit, 
+        *musicMain;
+
+
     SDL_Texture* loadTexture(SDL_Renderer* renderer, const std::string& filePath)
     {
         SDL_Texture* tex = IMG_LoadTexture(renderer, filePath.c_str());
         SDL_SetTextureScaleMode(tex, SDL_ScaleMode::SDL_SCALEMODE_NEAREST);
+
         return tex;
     }
+
+    MIX_Audio* loadAudio(MIX_Mixer* mixer, const std::string& filePath)
+    {
+        MIX_Audio* audio = MIX_LoadAudio(mixer, filePath.c_str(), true);
+		audioList.push_back(audio); 
+
+        return audio;
+    }
+
     void load(SDLState& state) 
     {
+        //load animations
 		playerAnims.resize(5);
 		playerAnims[ANIM_PLAYER_IDLE] = Animation(8, 1.6f);
         playerAnims[ANIM_PLAYER_RUN] = Animation(4, 0.5f);
@@ -110,6 +134,7 @@ struct Resources
 		enemyAnims[ANIM_ENEMY_HIT] = Animation(8, 1.f);
 		enemyAnims[ANIM_ENEMY_DIE] = Animation(18, 2.0f);
 
+        //load textures
 		texIdle = loadTexture(state.renderer, "data/idle.png");
 		texRun = loadTexture(state.renderer, "data/run.png");
 		texSlide = loadTexture(state.renderer, "data/slide.png");
@@ -129,6 +154,13 @@ struct Resources
 		texEnemy = loadTexture(state.renderer, "data/enemy.png");
 		texEnemyHit = loadTexture(state.renderer, "data/enemy_hit.png");
 		texEnemyDie = loadTexture(state.renderer, "data/enemy_die.png");
+
+        //load audio
+		audioShoot = loadAudio(state.mixer, "data/audio/shoot.wav");
+		audioShootHit = loadAudio(state.mixer, "data/audio/wall_hit.wav");
+		audioEnemyHit = loadAudio(state.mixer, "data/audio/enemy_hit.wav");
+
+		musicMain = loadAudio(state.mixer, "data/audio/Juhani Junkala [Retro Game Music Pack] Level 1.mp3");
     }
 
     void unload()
@@ -136,6 +168,11 @@ struct Resources
         for (SDL_Texture* tex : textures)
         {
 			SDL_DestroyTexture(tex);
+        }
+
+        for (auto& audio : audioList)
+        {
+			MIX_DestroyAudio(audio);
         }
     }
 };
@@ -173,6 +210,15 @@ int main(int argc, char* argv[])
 	createTiles(state, gs, res);
     uint64_t prevTime = SDL_GetTicks();
 
+
+    //play main music
+    MIX_Track* track = MIX_CreateTrack(state.mixer);
+    MIX_SetTrackAudio(track, res.musicMain);
+    MIX_SetTrackGain(track, 0.33f);
+    SDL_PropertiesID props = SDL_CreateProperties();
+	SDL_SetNumberProperty(props, MIX_PROP_PLAY_LOOPS_NUMBER, -1);
+	MIX_PlayTrack(track, props);
+
     //start the game loop
     bool running = true;
     while (running)
@@ -203,10 +249,16 @@ int main(int argc, char* argv[])
                 case SDL_EVENT_KEY_UP:
                 {
                     handleKeyInput(state, gs, gs.player(),event.key.scancode, false);
-                    if (event.key.scancode == SDL_SCANCODE_0)
+                    if (event.key.scancode == SDL_SCANCODE_F10)
                     {
 						gs.debugMode = !gs.debugMode;
                     }
+
+                    if(event.key.scancode == SDL_SCANCODE_F11)
+                    {
+                        state.fullscreen = !state.fullscreen;
+                        SDL_SetWindowFullscreen(state.window, state.fullscreen);
+					}
                     break;
                 }
                    
@@ -326,7 +378,7 @@ bool Initialize(SDLState& state)
     state.renderer = SDL_CreateRenderer(state.window, nullptr);
     if (!state.renderer)
     {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "Error creating renderer", nullptr);
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "Error creating renderer", state.window);
         cleanup(state);
         initSuccess = false;
     }
@@ -335,6 +387,17 @@ bool Initialize(SDLState& state)
 
     //configure presentation
     SDL_SetRenderLogicalPresentation(state.renderer, state.logW, state.logH, SDL_LOGICAL_PRESENTATION_LETTERBOX);
+
+    //create mixer device
+    MIX_Init();
+    state.mixer = MIX_CreateMixerDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, nullptr);
+    if (!state.mixer)
+    {
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Error", "Error creating mixer device", state.window);
+        cleanup(state);
+		initSuccess = false;
+    }
+
 
 	return initSuccess; 
 }
@@ -486,6 +549,8 @@ void update(const SDLState& state, GameState& gs, Resources& res, GameObject& ob
                     {
                         gs.bullets.push_back(bullet);
                     }
+
+                    MIX_PlayAudio(state.mixer, res.audioShoot);
                 }
 
             }
@@ -755,6 +820,7 @@ void collisionResponse(const SDLState& state, GameState& gs, Resources& res,
                 {
                     case ObjectType::level:
                     {
+						MIX_PlayAudio(state.mixer, res.audioShootHit);
                         break;
                     }
                     case ObjectType::enemy:
@@ -776,13 +842,17 @@ void collisionResponse(const SDLState& state, GameState& gs, Resources& res,
                                 objB.texture = res.texEnemyDie;
                                 objB.currentAnimation = res.ANIM_ENEMY_DIE;
                             }
+
+							MIX_PlayAudio(state.mixer, res.audioEnemyHit);
 						}
                         else
                         {
                             //dont collide with dead enemies
                             passThrough = true;
 						}
-                       
+                        
+
+
                         break;
                     }
                 }
