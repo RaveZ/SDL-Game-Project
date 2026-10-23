@@ -5,7 +5,19 @@ find_package(SDL3 REQUIRED)
 find_package(SDL3_image REQUIRED)
 find_package(SDL3_mixer REQUIRED)
 
-add_executable(SDL_Game "SDL_Game.cpp" "SDL_Game.h" "timer.h" "animation.h" "gameobject.h")
+add_executable(SDL_Game 
+    "src/engine/Timer.h" 
+    "src/engine/Animation.h" 
+    "src/engine/GameObject.h" 
+    "src/engine/EntityManager.cpp"
+    "src/engine/Components/TransformComponent.h" 
+    "src/engine/Components/RenderComponent.h"
+    "src/engine/Components/CollisionComponent.h"
+    "src/engine/Components/InputComponent.h" 
+    "src/Main.cpp" 
+    "src/Application.h" 
+    "src/Application.cpp"
+ "src/engine/GameState.h" "src/Resources.h" "src/Resources.cpp" "src/engine/SDLState.h")
 
 if(CMAKE_VERSION VERSION_GREATER 3.12)
     set_property(TARGET SDL_Game PROPERTY CXX_STANDARD 20)
@@ -13,6 +25,7 @@ endif()
 
 target_link_libraries(SDL_Game PRIVATE SDL3::SDL3 SDL3_image::SDL3_image SDL3_mixer::SDL3_mixer)
 target_include_directories(SDL_Game PRIVATE "ext/")
+target_include_directories(SDL_Game PRIVATE "engine/")
 target_include_directories(SDL_Game PRIVATE "ext/glm/")
 
 # --- Asset handling ---

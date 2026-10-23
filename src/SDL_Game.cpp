@@ -272,7 +272,7 @@ int main(int argc, char* argv[])
             for (auto& obj : layer)
             {
 				update(state, gs, res, obj, deltaTime); 
-               
+                
             }
         }
 
