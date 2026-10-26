@@ -7,6 +7,11 @@ struct CollisionComponent
 {
 	SDL_FRect colliderRect;
 
+	CollisionComponent()
+	{
+		colliderRect = SDL_FRect{ 0 };
+	}
+
 	CollisionComponent(SDL_FRect collider) : colliderRect(collider)
 	{
 

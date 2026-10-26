@@ -4,6 +4,7 @@
 #include "engine/SDLState.h"
 #include "resources.h"
 #include "engine/EntityManager.h"
+#include "engine/Systems/RenderSystem.h"
 
 #ifndef APPLICATION_H
 #define APPLICATION_H
@@ -24,6 +25,7 @@ public:
 
     int run();
     bool Initialize();
+	void update(float deltaTime);   
     void cleanup();
     void createTiles();
 
@@ -33,6 +35,7 @@ private:
     Resources res;
 
 	std::unique_ptr<EntityManager> entityManager;
+    std::unique_ptr<RenderSystem> renderSystem;
 };
 
 

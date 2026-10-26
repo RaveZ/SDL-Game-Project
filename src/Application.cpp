@@ -1,4 +1,8 @@
 #include "application.h"
+#include "engine/Components/CollisionComponent.h"
+#include "engine/Components/RenderComponent.h"
+#include "engine/Components/InputComponent.h"
+#include "engine/Components/TransformComponent.h"
 
 
 const int Application::SCREEN_WIDTH = 1200;
@@ -8,7 +12,6 @@ const int Application::HALF_HEIGHT = SCREEN_HEIGHT / 2;
 const int Application::LOGICAL_WIDTH = 640;
 const int Application::LOGICAL_HEIGHT = 320;
 
-const int TILE_SIZE = 32;
 const int MAP_ROWS = 5;
 const int MAP_COLS = 50;
 
@@ -68,6 +71,11 @@ bool Application::Initialize()
         initSuccess = false;
     }
 
+    //setup entity manager
+    entityManager = std::make_unique<EntityManager>();
+
+    //setup systems
+	renderSystem = std::make_unique<RenderSystem>(state.renderer);
 
     return initSuccess;
 }
@@ -83,13 +91,12 @@ int Application::run()
     //load the assets
     res.load(state);
 
+
     //setup game data
     gs = GameState(state);
     createTiles();
     uint64_t prevTime = SDL_GetTicks();
 
-	//setup entity manager
-    entityManager = std::make_unique<EntityManager>();
 
     //play main music
     MIX_Track* track = MIX_CreateTrack(state.mixer);
@@ -125,21 +132,8 @@ int Application::run()
             
         }
 
-        //calculate viewport position
-        gs.mapViewport.x = (gs.player().position.x + TILE_SIZE / 2) - gs.mapViewport.w / 2;
-
-        //perform drawing commands
-        SDL_SetRenderDrawColor(state.renderer, 50, 50, 50, 1);
-        SDL_RenderClear(state.renderer);
-
-        //draw background images
-        SDL_RenderTexture(state.renderer, res.texBg1, nullptr, nullptr);
-        drawParalaxBackground(state.renderer, res.texBg4, gs.player().velocity.x, gs.bg2Scroll, 0.075f, deltaTime);
-        drawParalaxBackground(state.renderer, res.texBg3, gs.player().velocity.x, gs.bg2Scroll, 0.15f, deltaTime);
-        drawParalaxBackground(state.renderer, res.texBg2, gs.player().velocity.x, gs.bg2Scroll, 0.3f, deltaTime);
-
-        //swap buffer and present
-        SDL_RenderPresent(state.renderer);
+        update(deltaTime);
+       
         prevTime = nowTime;
     }
 
@@ -147,6 +141,30 @@ int Application::run()
     cleanup();
     return 0;
 
+}
+
+void Application::update(float deltaTime)
+{ 
+    //calculate viewport position
+    gs.mapViewport.x = (gs.player().position.x + TILE_SIZE / 2) - gs.mapViewport.w / 2;
+
+    //perform drawing commands
+    SDL_SetRenderDrawColor(state.renderer, 50, 50, 50, 1);
+    SDL_RenderClear(state.renderer);
+
+    //draw background images
+    SDL_RenderTexture(state.renderer, res.texBg1, nullptr, nullptr);
+    drawParalaxBackground(state.renderer, res.texBg4, gs.player().velocity.x, gs.bg2Scroll, 0.075f, deltaTime);
+    drawParalaxBackground(state.renderer, res.texBg3, gs.player().velocity.x, gs.bg2Scroll, 0.15f, deltaTime);
+    drawParalaxBackground(state.renderer, res.texBg2, gs.player().velocity.x, gs.bg2Scroll, 0.3f, deltaTime);
+
+
+    //update systems
+    renderSystem->update(*entityManager);
+
+
+    //swap buffer and present
+    SDL_RenderPresent(state.renderer);
 }
 
 
@@ -213,7 +231,6 @@ void Application::createTiles()
                     return o;
                 };
 
-
             for (int r = 0; r < MAP_ROWS; r++)
             {
                 for (int c = 0; c < MAP_COLS; c++)
@@ -250,19 +267,12 @@ void Application::createTiles()
                     case 4: //player
                     {
                         //create our player
-                        GameObject player = createObject(r, c, res.texIdle, ObjectType::player);
-                        player.data.player = PlayerData();
-                        player.animations = res.playerAnims;
-                        player.currentAnimation = res.ANIM_PLAYER_IDLE;
-                        player.acceleration = glm::vec2(300, 0);
-                        player.maxSpeedX = 100;
-                        player.dynamic = true;
-                        player.collider = {
-                            .x = 11, .y = 6,
-                            .w = 10, .h = 26
-                        };
+						Entity player = entityManager->createEntity();
+						entityManager->AddComponent(player, InputComponent());
+						entityManager->AddComponent(player, TransformComponent(c * TILE_SIZE, state.logH - (MAP_ROWS - r) * TILE_SIZE));
+						entityManager->AddComponent(player, RenderComponent(res.texIdle));
+						entityManager->AddComponent(player, CollisionComponent(SDL_FRect { .x = 11, .y = 6, .w = 10, .h = 26 }));
 
-                        gs.layers[LAYER_IDX_CHARACTERS].push_back(player);
                         gs.playerIndex = gs.layers[LAYER_IDX_CHARACTERS].size() - 1;
                         break;
                     }
@@ -286,7 +296,6 @@ void Application::createTiles()
     loadMap(map);
     loadMap(foreground);
     loadMap(background);
-
 
     assert(gs.playerIndex != -1);
 }

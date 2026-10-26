@@ -6,5 +6,15 @@
 struct TransformComponent
 {
     glm::vec2 position;
-    float rotation;
+    float direction;
+
+    TransformComponent()
+    {
+
+    }
+    TransformComponent(float x, float y)
+    {
+        position = glm::vec2(x, y);
+		direction = 1.0f; 
+    }
 };
