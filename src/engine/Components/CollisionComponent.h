@@ -6,6 +6,7 @@
 struct CollisionComponent
 {
 	SDL_FRect colliderRect;
+	bool grounded = false;
 
 	CollisionComponent()
 	{

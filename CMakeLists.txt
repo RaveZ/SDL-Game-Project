@@ -18,7 +18,7 @@ add_executable(SDL_Game
     "src/Main.cpp" 
     "src/Application.h" 
     "src/Application.cpp"
- "src/engine/GameState.h" "src/Resources.h" "src/Resources.cpp" "src/engine/SDLState.h" "src/engine/Systems/RenderSystem.cpp" "src/engine/Systems/RenderSystem.h")
+ "src/engine/GameState.h" "src/Resources.h" "src/Resources.cpp" "src/engine/SDLState.h" "src/engine/Systems/RenderSystem.cpp" "src/engine/Systems/RenderSystem.h" "src/engine/Systems/MovementSystem.h" "src/engine/Systems/MovementSystem.cpp" "src/engine/Components/PhysicsComponent.h" "src/engine/Systems/CollisionSystem.h" "src/engine/Systems/CollisionSystem.cpp" "src/engine/Systems/InputSystem.h" "src/engine/Systems/InputSystem.cpp")
 
 if(CMAKE_VERSION VERSION_GREATER 3.12)
     set_property(TARGET SDL_Game PROPERTY CXX_STANDARD 20)

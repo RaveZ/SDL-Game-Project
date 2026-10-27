@@ -5,6 +5,9 @@
 #include "resources.h"
 #include "engine/EntityManager.h"
 #include "engine/Systems/RenderSystem.h"
+#include "engine/Systems/MovementSystem.h"
+#include "engine/Systems/CollisionSystem.h"
+#include "engine/Systems/InputSystem.h"
 
 #ifndef APPLICATION_H
 #define APPLICATION_H
@@ -33,9 +36,13 @@ private:
     GameState gs;
     SDLState state;
     Resources res;
-
-	std::unique_ptr<EntityManager> entityManager;
+    Entity player;
+	
+    std::unique_ptr<EntityManager> entityManager;
     std::unique_ptr<RenderSystem> renderSystem;
+	std::unique_ptr<MovementSystem> movementSystem;
+	std::unique_ptr<CollisionSystem> collisionSystem;
+	std::unique_ptr<InputSystem> inputSystem;
 };
 
 

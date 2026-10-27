@@ -18,7 +18,7 @@ enum class BulletState
 enum class EnemyState
 {
 	shambling, damaged, dead
-};;
+};
 
 struct PlayerData
 {

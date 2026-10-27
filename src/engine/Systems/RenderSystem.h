@@ -2,6 +2,7 @@
 
 #include <SDL3/SDL.h>
 #include "../EntityManager.h"
+#include "../GameState.h"
 
 class RenderSystem
 {
@@ -10,7 +11,7 @@ public:
 	{
 
 	}
-	void update(EntityManager& entityManager);
+	void update(EntityManager& entityManager, GameState& gs, Entity player);
 
 private:
 	SDL_Renderer* renderer;

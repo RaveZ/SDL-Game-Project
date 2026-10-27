@@ -1,14 +1,5 @@
 #include "EntityManager.h"
 
-EntityManager::EntityManager()
-{
-    nextEntity = 0;
-}
-
-EntityManager::~EntityManager()
-{
-}
-
 Entity EntityManager::createEntity()
 {
     return nextEntity++;
@@ -16,25 +7,23 @@ Entity EntityManager::createEntity()
 
 void EntityManager::destroyEntity(Entity entity)
 {
-    RemoveComponent<TransformComponent>(entity);
-    RemoveComponent<CollisionComponent>(entity);
-    RemoveComponent<RenderComponent>(entity);
-    RemoveComponent<InputComponent>(entity); // Don't forget to remove InputComponent too!
+    // Just erase the entity from all maps
+	RemoveComponent<TransformComponent>(entity);
+	RemoveComponent<InputComponent>(entity);
+	RemoveComponent<RenderComponent>(entity);
+	RemoveComponent<CollisionComponent>(entity);
+	RemoveComponent<PhysicsComponent>(entity);
 }
 
-// A fallback map for unsupported types (keeps the compiler happy)
-template<typename T>
-std::unordered_map<Entity, T>& EntityManager::GetComponentMap()
-{
-    static std::unordered_map<Entity, T> emptyMap;
-    return emptyMap;
-}
 
-// Explicit template specialization definitions
+// ==========================================
+// EXPLICIT TEMPLATE SPECIALIZATIONS
+// ==========================================
+
 template<>
-std::unordered_map<Entity, RenderComponent>& EntityManager::GetComponentMap<RenderComponent>()
+std::unordered_map<Entity, InputComponent>& EntityManager::GetComponentMap<InputComponent>()
 {
-    return renderComponents;
+    return inputComponents;
 }
 
 template<>
@@ -44,13 +33,19 @@ std::unordered_map<Entity, TransformComponent>& EntityManager::GetComponentMap<T
 }
 
 template<>
-std::unordered_map<Entity, InputComponent>& EntityManager::GetComponentMap<InputComponent>()
+std::unordered_map<Entity, RenderComponent>& EntityManager::GetComponentMap<RenderComponent>()
 {
-    return inputComponents;
+    return renderComponents;
 }
 
 template<>
 std::unordered_map<Entity, CollisionComponent>& EntityManager::GetComponentMap<CollisionComponent>()
 {
     return collisionComponents;
+}
+
+template<>
+std::unordered_map<Entity, PhysicsComponent>& EntityManager::GetComponentMap<PhysicsComponent>()
+{
+    return physicsComponents;
 }

@@ -76,6 +76,9 @@ bool Application::Initialize()
 
     //setup systems
 	renderSystem = std::make_unique<RenderSystem>(state.renderer);
+    movementSystem = std::make_unique<MovementSystem>();
+	collisionSystem = std::make_unique<CollisionSystem>(state.renderer);
+	inputSystem = std::make_unique<InputSystem>();
 
     return initSuccess;
 }
@@ -128,6 +131,20 @@ int Application::run()
                     state.height = event.window.data2;
                     break;
                 }
+                case SDL_EVENT_KEY_UP:
+                {
+                    if (event.key.scancode == SDL_SCANCODE_F10)
+                    {
+                        gs.debugMode = !gs.debugMode;
+                    }
+
+                    if (event.key.scancode == SDL_SCANCODE_F11)
+                    {
+                        state.fullscreen = !state.fullscreen;
+                        SDL_SetWindowFullscreen(state.window, state.fullscreen);
+                    }
+                    break;
+                }
             }
             
         }
@@ -145,9 +162,6 @@ int Application::run()
 
 void Application::update(float deltaTime)
 { 
-    //calculate viewport position
-    gs.mapViewport.x = (gs.player().position.x + TILE_SIZE / 2) - gs.mapViewport.w / 2;
-
     //perform drawing commands
     SDL_SetRenderDrawColor(state.renderer, 50, 50, 50, 1);
     SDL_RenderClear(state.renderer);
@@ -160,8 +174,10 @@ void Application::update(float deltaTime)
 
 
     //update systems
-    renderSystem->update(*entityManager);
-
+    renderSystem->update(*entityManager, gs, player);
+    movementSystem->update(*entityManager, deltaTime);
+	collisionSystem->update(*entityManager, gs, deltaTime);
+	inputSystem->update(*entityManager, player, state.keys);
 
     //swap buffer and present
     SDL_RenderPresent(state.renderer);
@@ -192,7 +208,7 @@ void Application::createTiles()
         0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         0, 0, 0, 0, 0, 3, 2, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 4, 2, 0, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 4, 0, 2, 0, 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 
     };
@@ -239,14 +255,19 @@ void Application::createTiles()
                     {
                     case 1: //ground
                     {
-                        GameObject o = createObject(r, c, res.texGround, ObjectType::level);
-                        gs.layers[LAYER_IDX_LEVEL].push_back(o);
+						Entity e = entityManager->createEntity();
+						entityManager->AddComponent(e, TransformComponent(c * TILE_SIZE, state.logH - (MAP_ROWS - r) * TILE_SIZE));
+
+                        entityManager->AddComponent(e, CollisionComponent(SDL_FRect{ .x = 0, .y = 0, .w = 32, .h = 32 }));
+						entityManager->AddComponent(e, RenderComponent(res.texGround));
                         break;
                     }
                     case 2: //panel
                     {
-                        GameObject o = createObject(r, c, res.texPanel, ObjectType::level);
-                        gs.layers[LAYER_IDX_LEVEL].push_back(o);
+                        Entity e = entityManager->createEntity();
+                        entityManager->AddComponent(e, TransformComponent(c * TILE_SIZE, state.logH - (MAP_ROWS - r) * TILE_SIZE));
+                        entityManager->AddComponent(e, CollisionComponent(SDL_FRect{ .x = 0, .y = 0, .w = 32, .h = 32 }));
+                        entityManager->AddComponent(e, RenderComponent(res.texPanel));
                         break;
                     }
                     case 3: //enemy
@@ -267,25 +288,28 @@ void Application::createTiles()
                     case 4: //player
                     {
                         //create our player
-						Entity player = entityManager->createEntity();
+						player = entityManager->createEntity();
 						entityManager->AddComponent(player, InputComponent());
 						entityManager->AddComponent(player, TransformComponent(c * TILE_SIZE, state.logH - (MAP_ROWS - r) * TILE_SIZE));
 						entityManager->AddComponent(player, RenderComponent(res.texIdle));
 						entityManager->AddComponent(player, CollisionComponent(SDL_FRect { .x = 11, .y = 6, .w = 10, .h = 26 }));
+						entityManager->AddComponent(player, PhysicsComponent());
 
                         gs.playerIndex = gs.layers[LAYER_IDX_CHARACTERS].size() - 1;
                         break;
                     }
                     case 5: //grass
                     {
-                        GameObject o = createObject(r, c, res.texGrass, ObjectType::level);
-                        gs.foregroundTiles.push_back(o);
+                        Entity e = entityManager->createEntity();
+                        entityManager->AddComponent(e, TransformComponent(c * TILE_SIZE, state.logH - (MAP_ROWS - r) * TILE_SIZE));
+                        entityManager->AddComponent(e, RenderComponent(res.texGrass));
                         break;
                     }
                     case 6: //brick
                     {
-                        GameObject o = createObject(r, c, res.texBrick, ObjectType::level);
-                        gs.backgroundTiles.push_back(o);
+                        Entity e = entityManager->createEntity();
+                        entityManager->AddComponent(e, TransformComponent(c* TILE_SIZE, state.logH - (MAP_ROWS - r) * TILE_SIZE));
+                        entityManager->AddComponent(e, RenderComponent(res.texBrick));
                         break;
                     }
                     }
