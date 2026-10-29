@@ -79,6 +79,7 @@ bool Application::Initialize()
     movementSystem = std::make_unique<MovementSystem>();
 	collisionSystem = std::make_unique<CollisionSystem>(state.renderer);
 	inputSystem = std::make_unique<InputSystem>();
+    animationSystem = std::make_unique<AnimationSystem>();
 
     return initSuccess;
 }
@@ -178,6 +179,7 @@ void Application::update(float deltaTime)
     movementSystem->update(*entityManager, deltaTime);
 	collisionSystem->update(*entityManager, gs, deltaTime);
 	inputSystem->update(*entityManager, player, state.keys);
+	animationSystem->update(*entityManager, deltaTime);
 
     //swap buffer and present
     SDL_RenderPresent(state.renderer);
@@ -223,11 +225,11 @@ void Application::createTiles()
     };
 
     short background[MAP_ROWS][MAP_COLS] = {
-       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-       0, 0, 0, 0, 0, 0, 6, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-       0, 0, 0, 0, 0, 0, 0, 6, 6, 6, 0, 0, 0, 0, 0, 0, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-       0, 0, 6, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 6, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 6, 6, 6, 0, 0, 0, 0, 0, 0, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 6, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 6, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 
     };
 
@@ -251,23 +253,25 @@ void Application::createTiles()
             {
                 for (int c = 0; c < MAP_COLS; c++)
                 {
+					float posX = static_cast<float>(c * TILE_SIZE);
+					float posY = static_cast<float>(state.logH - (MAP_ROWS - r) * TILE_SIZE);
                     switch (layer[r][c])
                     {
                     case 1: //ground
                     {
 						Entity e = entityManager->createEntity();
-						entityManager->AddComponent(e, TransformComponent(c * TILE_SIZE, state.logH - (MAP_ROWS - r) * TILE_SIZE));
+						entityManager->AddComponent(e, TransformComponent(posX, posY));
 
                         entityManager->AddComponent(e, CollisionComponent(SDL_FRect{ .x = 0, .y = 0, .w = 32, .h = 32 }));
-						entityManager->AddComponent(e, RenderComponent(res.texGround));
+						entityManager->AddComponent(e, RenderComponent(res.texGround, RenderLayer::LEVEL));
                         break;
                     }
                     case 2: //panel
                     {
                         Entity e = entityManager->createEntity();
-                        entityManager->AddComponent(e, TransformComponent(c * TILE_SIZE, state.logH - (MAP_ROWS - r) * TILE_SIZE));
+                        entityManager->AddComponent(e, TransformComponent(posX, posY));
                         entityManager->AddComponent(e, CollisionComponent(SDL_FRect{ .x = 0, .y = 0, .w = 32, .h = 32 }));
-                        entityManager->AddComponent(e, RenderComponent(res.texPanel));
+                        entityManager->AddComponent(e, RenderComponent(res.texPanel, RenderLayer::LEVEL));
                         break;
                     }
                     case 3: //enemy
@@ -290,26 +294,34 @@ void Application::createTiles()
                         //create our player
 						player = entityManager->createEntity();
 						entityManager->AddComponent(player, InputComponent());
-						entityManager->AddComponent(player, TransformComponent(c * TILE_SIZE, state.logH - (MAP_ROWS - r) * TILE_SIZE));
-						entityManager->AddComponent(player, RenderComponent(res.texIdle));
+						entityManager->AddComponent(player, TransformComponent(posX, posY));
+						entityManager->AddComponent(player, RenderComponent(res.texIdle, RenderLayer::CHARACTER));
 						entityManager->AddComponent(player, CollisionComponent(SDL_FRect { .x = 11, .y = 6, .w = 10, .h = 26 }));
 						entityManager->AddComponent(player, PhysicsComponent());
 
-                        gs.playerIndex = gs.layers[LAYER_IDX_CHARACTERS].size() - 1;
+                        AnimationComponent playerAnim;
+                        playerAnim.texture = res.texIdle;
+                        playerAnim.frameCount = 8;
+                        playerAnim.totalDuration = 1.6f;
+                        playerAnim.isLooping = true;
+
+                        entityManager->AddComponent(player, playerAnim);
+
+                        gs.playerIndex = static_cast<int>(gs.layers[LAYER_IDX_CHARACTERS].size() - 1);
                         break;
                     }
                     case 5: //grass
                     {
                         Entity e = entityManager->createEntity();
-                        entityManager->AddComponent(e, TransformComponent(c * TILE_SIZE, state.logH - (MAP_ROWS - r) * TILE_SIZE));
-                        entityManager->AddComponent(e, RenderComponent(res.texGrass));
+                        entityManager->AddComponent(e, TransformComponent(posX, posY));
+                        entityManager->AddComponent(e, RenderComponent(res.texGrass, RenderLayer::FOREGROUND));
                         break;
                     }
                     case 6: //brick
                     {
                         Entity e = entityManager->createEntity();
-                        entityManager->AddComponent(e, TransformComponent(c* TILE_SIZE, state.logH - (MAP_ROWS - r) * TILE_SIZE));
-                        entityManager->AddComponent(e, RenderComponent(res.texBrick));
+                        entityManager->AddComponent(e, TransformComponent(posX, posY));
+                        entityManager->AddComponent(e, RenderComponent(res.texBrick, RenderLayer::BACKGROUND));
                         break;
                     }
                     }

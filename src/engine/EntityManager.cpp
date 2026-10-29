@@ -49,3 +49,10 @@ std::unordered_map<Entity, PhysicsComponent>& EntityManager::GetComponentMap<Phy
 {
     return physicsComponents;
 }
+
+
+template<>
+std::unordered_map<Entity, AnimationComponent>& EntityManager::GetComponentMap<AnimationComponent>()
+{
+    return animationComponents;
+}

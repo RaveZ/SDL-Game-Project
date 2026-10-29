@@ -1,14 +1,11 @@
 #include "RenderSystem.h"
-#include <iostream>
-
-#include "RenderSystem.h"
-#include <iostream>
+#include <vector>
+#include <map>
 
 void RenderSystem::update(EntityManager& entityManager, GameState& gs, Entity player)
 {
-	auto* playerTransform = entityManager.GetComponent<TransformComponent>(player);
+    auto* playerTransform = entityManager.GetComponent<TransformComponent>(player);
 
-    //calculate viewport position
     if (playerTransform)
     {
         gs.mapViewport.x = (playerTransform->position.x + TILE_SIZE / 2) - gs.mapViewport.w / 2;
@@ -16,31 +13,57 @@ void RenderSystem::update(EntityManager& entityManager, GameState& gs, Entity pl
 
     auto& renderComponents = entityManager.GetComponentMap<RenderComponent>();
     auto& transformComponents = entityManager.GetComponentMap<TransformComponent>();
+    auto& animationComponents = entityManager.GetComponentMap<AnimationComponent>();
+
+    struct Drawable {
+        RenderComponent* render;
+        TransformComponent* transform;
+        AnimationComponent* anim;
+    };
+
+    std::map<int, std::vector<Drawable>> buckets;
 
     for (auto& [entity, renderComp] : renderComponents)
     {
         auto transformIt = transformComponents.find(entity);
         if (transformIt == transformComponents.end()) continue;
 
-        auto& transform = transformIt->second;
-
         if (renderComp.texture == nullptr) continue;
 
-        renderComp.destRect.x = transform.position.x - gs.mapViewport.x;
-        renderComp.destRect.y = transform.position.y;
+        auto animIt = animationComponents.find(entity);
+        AnimationComponent* anim = (animIt != animationComponents.end()) ? &animIt->second : nullptr;
 
-        SDL_FlipMode flipMode = (transform.direction == -1) ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
+        buckets[renderComp.layer].push_back({ &renderComp, &transformIt->second, anim });
+    }
 
-        SDL_RenderTextureRotated(
-            renderer,
-            renderComp.texture,
-            &renderComp.srcRect,
-            &renderComp.destRect,
-            0.f,
-            nullptr,
-            flipMode
-        );
+    for (auto& [layer, bucket] : buckets)
+    {
+        for (auto& d : bucket)
+        {
+            SDL_FRect finalSrcRect = d.render->srcRect;
 
+            if (d.anim)
+            {
+                finalSrcRect.x = d.anim->currentFrame * d.anim->frameWidth;
+                finalSrcRect.y = 0;
+                finalSrcRect.w = d.anim->frameWidth;
+                finalSrcRect.h = d.anim->frameHeight;
+            }
 
+            d.render->destRect.x = d.transform->position.x - gs.mapViewport.x;
+            d.render->destRect.y = d.transform->position.y;
+
+            SDL_FlipMode flipMode = (d.transform->direction == -1) ? SDL_FLIP_HORIZONTAL : SDL_FLIP_NONE;
+
+            SDL_RenderTextureRotated(
+                renderer,
+                d.render->texture,
+                &finalSrcRect,
+                &d.render->destRect,
+                0.f,
+                nullptr,
+                flipMode
+            );
+        }
     }
 }

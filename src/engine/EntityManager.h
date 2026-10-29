@@ -6,6 +6,7 @@
 #include "Components/RenderComponent.h"
 #include "Components/InputComponent.h"
 #include "Components/PhysicsComponent.h"
+#include "Components/AnimationComponent.h"
 
 using Entity = unsigned int;
 
@@ -21,6 +22,7 @@ private:
     std::unordered_map<Entity, RenderComponent> renderComponents;
     std::unordered_map<Entity, CollisionComponent> collisionComponents;
     std::unordered_map<Entity, PhysicsComponent> physicsComponents;
+	std::unordered_map<Entity, AnimationComponent> animationComponents;
 
 public:
     EntityManager() = default;

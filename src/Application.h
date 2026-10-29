@@ -8,6 +8,7 @@
 #include "engine/Systems/MovementSystem.h"
 #include "engine/Systems/CollisionSystem.h"
 #include "engine/Systems/InputSystem.h"
+#include "engine/Systems/AnimationSystem.h"
 
 #ifndef APPLICATION_H
 #define APPLICATION_H
@@ -43,6 +44,7 @@ private:
 	std::unique_ptr<MovementSystem> movementSystem;
 	std::unique_ptr<CollisionSystem> collisionSystem;
 	std::unique_ptr<InputSystem> inputSystem;
+	std::unique_ptr<AnimationSystem> animationSystem;
 };
 
 

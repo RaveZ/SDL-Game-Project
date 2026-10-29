@@ -2,6 +2,7 @@
 #include "../Components/PhysicsComponent.h"
 #include "../Components/CollisionComponent.h"
 #include "../Components/TransformComponent.h"
+#include <iostream> 
 
 void InputSystem::update(EntityManager& entityManager, Entity player, const bool* keys)
 {
@@ -9,38 +10,37 @@ void InputSystem::update(EntityManager& entityManager, Entity player, const bool
     auto* playerTransform = entityManager.GetComponent<TransformComponent>(player);
     auto* playerCollision = entityManager.GetComponent<CollisionComponent>(player);
 
-    // Safety check: Player must have physics and transform
     if (!playerPhysics || !playerTransform) return;
 
-    // --- 1. HORIZONTAL MOVEMENT ---
+    //Horizontal Movement
     float direction = 0.0f;
     if (keys[SDL_SCANCODE_A]) direction -= 1.0f;
     if (keys[SDL_SCANCODE_D]) direction += 1.0f;
 
-    if (direction != 0.0f)
-    {
+    if (direction != 0.0f) {
         playerTransform->direction = (direction > 0) ? 1 : -1;
-        playerPhysics->acceleration.x = direction * 300.0f; // Acceleration force
+        playerPhysics->acceleration.x = direction * 300.0f;
     }
-    else
-    {
-        // No input, let the MovementSystem's friction handle deceleration
+    else {
         playerPhysics->acceleration.x = 0.0f;
     }
 
-    // --- 2. JUMPING (Edge Trigger) ---
+    //jump
     bool isJumpPressed = keys[SDL_SCANCODE_SPACE];
-
-    // Only jump if: The key is pressed, it wasn't pressed last frame, and player is on the ground
     bool jumpJustPressed = isJumpPressed && !wasJumpPressed;
     bool isGrounded = playerCollision && playerCollision->grounded;
 
+    
     if (jumpJustPressed && isGrounded)
     {
-        playerPhysics->velocity.y = -200.0f; // Apply jump force
-        playerCollision->grounded = false;   // Immediately leave the ground
+        playerPhysics->velocity.y = -200.0f;
+        playerCollision->grounded = false; 
     }
 
-    // Save the state for the next frame
     wasJumpPressed = isJumpPressed;
+
+    //shooting
+	bool bShootPressed = keys[SDL_SCANCODE_E];
+
+
 }
