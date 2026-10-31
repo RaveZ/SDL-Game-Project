@@ -13,6 +13,10 @@ void EntityManager::destroyEntity(Entity entity)
 	RemoveComponent<RenderComponent>(entity);
 	RemoveComponent<CollisionComponent>(entity);
 	RemoveComponent<PhysicsComponent>(entity);
+	RemoveComponent<AnimationComponent>(entity);
+	RemoveComponent<HealthComponent>(entity);
+	RemoveComponent<LifetimeComponent>(entity);
+	RemoveComponent<TagComponent>(entity);
 }
 
 
@@ -55,4 +59,22 @@ template<>
 std::unordered_map<Entity, AnimationComponent>& EntityManager::GetComponentMap<AnimationComponent>()
 {
     return animationComponents;
+}
+
+template<>
+std::unordered_map<Entity, HealthComponent>& EntityManager::GetComponentMap<HealthComponent>()
+{
+    return healthComponents;
+}
+
+template<>
+std::unordered_map<Entity, LifetimeComponent>& EntityManager::GetComponentMap<LifetimeComponent>()
+{
+    return lifetimeComponents;
+}
+
+template<>
+std::unordered_map<Entity, TagComponent>& EntityManager::GetComponentMap<TagComponent>()
+{
+    return tagComponents;
 }

@@ -14,7 +14,6 @@ void AnimationSystem::update(EntityManager& entityManager, float deltaTime)
         // Advance the timer
         anim.timer += deltaTime;
 
-        // Check if it's time to advance to the next frame
         if (anim.timer >= frameDuration)
         {
             anim.timer -= frameDuration;

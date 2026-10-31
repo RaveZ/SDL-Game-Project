@@ -7,6 +7,9 @@
 #include "Components/InputComponent.h"
 #include "Components/PhysicsComponent.h"
 #include "Components/AnimationComponent.h"
+#include "Components/HealthComponent.h"
+#include "Components/LifetimeComponent.h"
+#include "Components/TagComponent.h"
 
 using Entity = unsigned int;
 
@@ -23,6 +26,9 @@ private:
     std::unordered_map<Entity, CollisionComponent> collisionComponents;
     std::unordered_map<Entity, PhysicsComponent> physicsComponents;
 	std::unordered_map<Entity, AnimationComponent> animationComponents;
+    std::unordered_map<Entity, HealthComponent> healthComponents;
+	std::unordered_map<Entity, LifetimeComponent> lifetimeComponents;
+	std::unordered_map<Entity, TagComponent> tagComponents;
 
 public:
     EntityManager() = default;

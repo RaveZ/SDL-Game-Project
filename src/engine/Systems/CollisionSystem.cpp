@@ -70,7 +70,7 @@ void CollisionSystem::update(EntityManager& entityManager, GameState& gs, float 
             SDL_FRect overlap{ 0 };
             if (SDL_GetRectIntersectionFloat(&rectA, &rectB, &overlap))
             {
-                ResolveCollision(entityManager, entityA, entityB, rectA, rectB, overlap);
+                CollisionResponse(entityManager, entityA, entityB, rectA, rectB, overlap);
             }
         }
 
@@ -103,7 +103,7 @@ void CollisionSystem::update(EntityManager& entityManager, GameState& gs, float 
     }
 }
 
-void CollisionSystem::ResolveCollision(
+void CollisionSystem::CollisionResponse(
     EntityManager& entityManager,
     Entity entityA, Entity entityB,
     const SDL_FRect& rectA, const SDL_FRect& rectB, const SDL_FRect& overlap)

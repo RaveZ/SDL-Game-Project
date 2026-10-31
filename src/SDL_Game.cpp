@@ -1003,6 +1003,8 @@ void createTiles(const SDLState& state, GameState& gs, const Resources& res)
                             .x = 11, .y = 6,
                             .w = 10, .h = 26
                         };
+                        
+
 
                         gs.layers[LAYER_IDX_CHARACTERS].push_back(player);
                         gs.playerIndex = gs.layers[LAYER_IDX_CHARACTERS].size() - 1;

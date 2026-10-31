@@ -11,7 +11,7 @@ public:
     void update(EntityManager& entityManager, GameState& gs, float deltaTime);
 
 private:
-    void ResolveCollision(
+    void CollisionResponse(
         EntityManager& entityManager,
         Entity entityA, Entity entityB,
         const SDL_FRect& rectA, const SDL_FRect& rectB, const SDL_FRect& overlap

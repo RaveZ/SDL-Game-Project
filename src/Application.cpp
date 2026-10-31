@@ -169,16 +169,16 @@ void Application::update(float deltaTime)
 
     //draw background images
     SDL_RenderTexture(state.renderer, res.texBg1, nullptr, nullptr);
-    drawParalaxBackground(state.renderer, res.texBg4, gs.player().velocity.x, gs.bg2Scroll, 0.075f, deltaTime);
-    drawParalaxBackground(state.renderer, res.texBg3, gs.player().velocity.x, gs.bg2Scroll, 0.15f, deltaTime);
-    drawParalaxBackground(state.renderer, res.texBg2, gs.player().velocity.x, gs.bg2Scroll, 0.3f, deltaTime);
+    drawParalaxBackground(state.renderer, res.texBg4, 0, gs.bg2Scroll, 0.075f, deltaTime);
+    drawParalaxBackground(state.renderer, res.texBg3, 0, gs.bg2Scroll, 0.15f, deltaTime);
+    drawParalaxBackground(state.renderer, res.texBg2, 0, gs.bg2Scroll, 0.3f, deltaTime);
 
 
     //update systems
     renderSystem->update(*entityManager, gs, player);
     movementSystem->update(*entityManager, deltaTime);
 	collisionSystem->update(*entityManager, gs, deltaTime);
-	inputSystem->update(*entityManager, player, state.keys);
+	inputSystem->update(*entityManager, player, res, state.keys, deltaTime);
 	animationSystem->update(*entityManager, deltaTime);
 
     //swap buffer and present
@@ -287,6 +287,13 @@ void Application::createTiles()
                         o.maxSpeedX = 15;
                         o.dynamic = true;
                         gs.layers[LAYER_IDX_CHARACTERS].push_back(o);
+
+                        Entity e = entityManager->createEntity();
+                        entityManager->AddComponent(e, TransformComponent(posX, posY));
+                        entityManager->AddComponent(e, CollisionComponent(SDL_FRect{ .x = 10, .y = 4, .w = 12, .h = 28 }));
+						entityManager->AddComponent(e, RenderComponent(res.texEnemy, RenderLayer::CHARACTER));
+						entityManager->AddComponent(e, PhysicsComponent());
+
                         break;
                     }
                     case 4: //player
@@ -307,7 +314,6 @@ void Application::createTiles()
 
                         entityManager->AddComponent(player, playerAnim);
 
-                        gs.playerIndex = static_cast<int>(gs.layers[LAYER_IDX_CHARACTERS].size() - 1);
                         break;
                     }
                     case 5: //grass
@@ -333,7 +339,6 @@ void Application::createTiles()
     loadMap(foreground);
     loadMap(background);
 
-    assert(gs.playerIndex != -1);
 }
 
 
